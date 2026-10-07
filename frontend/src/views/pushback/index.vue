@@ -77,15 +77,17 @@ import {
   downloadEntries,
   listEntries,
   moduleMeta,
+  moduleStats,
   runAction as applyAction,
 } from '@/api/local-service'
+import { useDataSync } from '@/composables/useDataSync'
 import type { EntryRow } from '@/data/types'
 
 const meta = moduleMeta('pushback')
 const columns = ["牵引编号", "关联航班", "牵引车型", "操作人员", "推出机位", "推出方向", "完成时间", "牵引状态"]
 const actions = ["派出车辆", "开始推出", "确认完成"]
 const statuses = ["待牵引", "已就位", "推出中", "已完成"]
-const stats = [{"label": "待牵引航班", "value": 0}, {"label": "推出中航班", "value": 0}, {"label": "已完成牵引", "value": 0}]
+const stats = ref<{ label: string; value: number }[]>([])
 
 const rows = ref<EntryRow[]>([])
 const total = ref(0)
@@ -128,10 +130,12 @@ function reload() {
     const payload = listEntries(meta.key, filters.value)
     rows.value = payload.items
     total.value = payload.total
+    stats.value = moduleStats(meta.key)
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '牵引车调度列表读取失败'
   }
 }
 
 onMounted(reload)
+useDataSync(reload)
 </script>

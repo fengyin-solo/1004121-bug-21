@@ -1,9 +1,13 @@
-import { MODULE_BY_KEY } from '@/data/modules'
+import { MODULE_BY_KEY, MODULES } from '@/data/modules'
 import { allRows, listRows, resetRows, saveRows } from '@/data/local-store'
+import {
+  deriveFlags,
+  metricCards,
+  summarizeRows,
+  UNCATEGORIZED_KEY,
+  UNCATEGORIZED_NAME,
+} from '@/data/stats'
 import type { ActionResult, EntryRow, ModuleMeta, OverviewResult, PageResult } from '@/data/types'
-
-// 会写进数据的「往回走」动作：命中就把这条记录标成异常态，看板上能一眼看出来。
-const NEGATIVE_ACTIONS = ['撤销', '作废', '拒绝', '驳回', '停用', '忽略', '下线', '回滚']
 
 export function moduleMeta(key: string): ModuleMeta {
   const meta = MODULE_BY_KEY.get(key)
@@ -24,8 +28,10 @@ export function filterRows(rows: EntryRow[], filters: Record<string, string>): E
 }
 
 export function listEntries(key: string, filters: Record<string, string> = {}): PageResult {
-  const matched = filterRows(listRows(key), filters)
-  return { items: matched, total: matched.length, page: 1, size: matched.length }
+  const all = listRows(key)
+  const matched = filterRows(all, filters)
+  // total 始终是登记总量（与概览、导出一致）；items 才是筛选后当前页的记录。
+  return { items: matched, total: all.length, page: 1, size: matched.length }
 }
 
 export function runAction(key: string, id: number, action: string): ActionResult {
@@ -43,16 +49,19 @@ export function runAction(key: string, id: number, action: string): ActionResult
   if (current === target) {
     return { ok: false, message: `${meta.entity}已经是「${target}」，不用重复操作` }
   }
-  const lastStatus = meta.statuses[meta.statuses.length - 1]
-  const updated: EntryRow = {
-    ...rows[index],
-    status: target,
-    pending: target !== lastStatus,
-    abnormal: NEGATIVE_ACTIONS.some((verb) => action.startsWith(verb)),
-  }
+  // 待处理/异常标记与概览重算共用 deriveFlags 一份口径，写下去什么重算就是什么。
+  const flags = deriveFlags(meta, target, action)
+  const updated: EntryRow = { ...rows[index], status: target, ...flags }
   const next = [...rows]
   next[index] = updated
-  saveRows(key, next)
+  try {
+    saveRows(key, next)
+  } catch (error) {
+    return {
+      ok: false,
+      message: error instanceof Error ? error.message : '数据落库失败，本次操作已回滚',
+    }
+  }
   return { ok: true, message: `${meta.entity}已${action}，当前状态「${target}」` }
 }
 
@@ -65,6 +74,7 @@ export function exportEntries(key: string): { filename: string; content: string 
   const meta = moduleMeta(key)
   const header = ['编号', ...meta.fields, '当前状态']
   const lines = [header.join(',')]
+  // 导出与列表、概览读同一份持久化记录，总量不再是两套数。
   for (const row of listRows(key)) {
     lines.push([row.id, ...meta.fields.map((field) => row[field] ?? ''), row.status].join(','))
   }
@@ -84,19 +94,23 @@ export function downloadEntries(key: string): void {
   URL.revokeObjectURL(url)
 }
 
+// 业务模块页头部指标卡：和概览同源，动作落库后刷新页面仍是同一份口径。
+export function moduleStats(key: string): { label: string; value: number }[] {
+  return metricCards(moduleMeta(key), listRows(key))
+}
+
 export function loadOverview(): OverviewResult {
-  const rows = allRows()
-  const modules = [...MODULE_BY_KEY.values()].map((meta) => {
-    const entries = rows[meta.key] ?? []
-    return {
-      name: meta.name,
-      created: entries.length,
-      pending: entries.filter((row) => row.pending).length,
-      abnormal: entries.filter((row) => row.abnormal).length,
-    }
+  const buckets = allRows()
+  const modules = MODULES.map((meta) => {
+    const summary = summarizeRows(buckets[meta.key] ?? [])
+    return { name: meta.name, ...summary }
   })
+  const uncategorized = buckets[UNCATEGORIZED_KEY] ?? []
+  if (uncategorized.length > 0) {
+    modules.push({ name: UNCATEGORIZED_NAME, ...summarizeRows(uncategorized) })
+  }
   const cards = [
-    { label: '业务模块', value: modules.length },
+    { label: '业务模块', value: MODULES.length },
     { label: '登记总量', value: modules.reduce((sum, item) => sum + item.created, 0) },
     { label: '待处理', value: modules.reduce((sum, item) => sum + item.pending, 0) },
     { label: '异常量', value: modules.reduce((sum, item) => sum + item.abnormal, 0) },

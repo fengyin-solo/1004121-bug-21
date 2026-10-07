@@ -77,15 +77,17 @@ import {
   downloadEntries,
   listEntries,
   moduleMeta,
+  moduleStats,
   runAction as applyAction,
 } from '@/api/local-service'
+import { useDataSync } from '@/composables/useDataSync'
 import type { EntryRow } from '@/data/types'
 
 const meta = moduleMeta('lavatory')
 const columns = ["排污编号", "关联航班", "服务车型", "操作人员", "开始时间", "结束时间", "排污量", "服务状态"]
 const actions = ["开始服务", "确认完成", "报修设备"]
 const statuses = ["待服务", "服务中", "已完成", "设备异常"]
-const stats = [{"label": "待服务航班", "value": 0}, {"label": "服务中航班", "value": 0}, {"label": "设备异常数", "value": 0}]
+const stats = ref<{ label: string; value: number }[]>([])
 
 const rows = ref<EntryRow[]>([])
 const total = ref(0)
@@ -128,10 +130,12 @@ function reload() {
     const payload = listEntries(meta.key, filters.value)
     rows.value = payload.items
     total.value = payload.total
+    stats.value = moduleStats(meta.key)
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '排污服务列表读取失败'
   }
 }
 
 onMounted(reload)
+useDataSync(reload)
 </script>

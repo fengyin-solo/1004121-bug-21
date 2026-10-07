@@ -77,15 +77,17 @@ import {
   downloadEntries,
   listEntries,
   moduleMeta,
+  moduleStats,
   runAction as applyAction,
 } from '@/api/local-service'
+import { useDataSync } from '@/composables/useDataSync'
 import type { EntryRow } from '@/data/types'
 
 const meta = moduleMeta('ground_power')
 const columns = ["设备编号", "设备类型", "所属机位", "输出电压", "额定电流", "供电开始", "供电结束", "设备状态"]
 const actions = ["开始供电", "结束供电", "停用报修"]
 const statuses = ["待机", "供电中", "已断电", "故障停用"]
-const stats = [{"label": "供电中设备", "value": 0}, {"label": "待机设备", "value": 0}, {"label": "故障设备", "value": 0}]
+const stats = ref<{ label: string; value: number }[]>([])
 
 const rows = ref<EntryRow[]>([])
 const total = ref(0)
@@ -128,10 +130,12 @@ function reload() {
     const payload = listEntries(meta.key, filters.value)
     rows.value = payload.items
     total.value = payload.total
+    stats.value = moduleStats(meta.key)
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '地面电源列表读取失败'
   }
 }
 
 onMounted(reload)
+useDataSync(reload)
 </script>

@@ -17,7 +17,7 @@
     </div>
     <table class="data-table">
       <thead>
-        <tr><th>业务模块</th><th>今日新增</th><th>待处理</th><th>异常量</th></tr>
+        <tr><th>业务模块</th><th>登记总量</th><th>待处理</th><th>异常量</th></tr>
       </thead>
       <tbody>
         <tr v-for="row in moduleRows" :key="row.name">
@@ -29,7 +29,7 @@
       </tbody>
     </table>
     <footer class="page-foot">
-      <span>数据保存在本机浏览器里，换浏览器或清缓存会回到示例数据</span>
+      <span>统计口径与各模块清单、导出同源；数据保存在本机浏览器里，换浏览器或清缓存会回到示例数据</span>
     </footer>
   </section>
 </template>
@@ -38,6 +38,7 @@
 import { onMounted, ref } from 'vue'
 
 import { loadOverview } from '@/api/local-service'
+import { useDataSync } from '@/composables/useDataSync'
 import type { OverviewResult } from '@/data/types'
 
 const cards = ref<OverviewResult['cards']>([])
@@ -50,4 +51,6 @@ function refresh() {
 }
 
 onMounted(refresh)
+// 业务模块页的动作落库后，切回概览（或多标签页同时开着）看到的是重算后的同一份数。
+useDataSync(refresh)
 </script>

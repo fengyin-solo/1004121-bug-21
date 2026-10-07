@@ -77,15 +77,17 @@ import {
   downloadEntries,
   listEntries,
   moduleMeta,
+  moduleStats,
   runAction as applyAction,
 } from '@/api/local-service'
+import { useDataSync } from '@/composables/useDataSync'
 import type { EntryRow } from '@/data/types'
 
 const meta = moduleMeta('apron_safety')
 const columns = ["巡查编号", "巡查区域", "巡查人员", "巡查日期", "发现问题", "整改措施", "复查结果", "安全状态"]
 const actions = ["记录巡查", "安排整改", "确认闭环"]
 const statuses = ["待巡查", "已巡查", "待整改", "已闭环"]
-const stats = [{"label": "今日巡查", "value": 0}, {"label": "待整改问题", "value": 0}, {"label": "已闭环问题", "value": 0}]
+const stats = ref<{ label: string; value: number }[]>([])
 
 const rows = ref<EntryRow[]>([])
 const total = ref(0)
@@ -128,10 +130,12 @@ function reload() {
     const payload = listEntries(meta.key, filters.value)
     rows.value = payload.items
     total.value = payload.total
+    stats.value = moduleStats(meta.key)
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '机坪安全列表读取失败'
   }
 }
 
 onMounted(reload)
+useDataSync(reload)
 </script>

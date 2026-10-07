@@ -77,15 +77,17 @@ import {
   downloadEntries,
   listEntries,
   moduleMeta,
+  moduleStats,
   runAction as applyAction,
 } from '@/api/local-service'
+import { useDataSync } from '@/composables/useDataSync'
 import type { EntryRow } from '@/data/types'
 
 const meta = moduleMeta('bridge')
 const columns = ["廊桥编号", "所属机位", "对接机型", "调度人员", "计划对接", "实际对接", "脱离时间", "廊桥状态"]
 const actions = ["安排对接", "确认脱离", "停用报修"]
 const statuses = ["待对接", "已对接", "已脱离", "故障停用"]
-const stats = [{"label": "待对接廊桥", "value": 0}, {"label": "已对接廊桥", "value": 0}, {"label": "故障廊桥", "value": 0}]
+const stats = ref<{ label: string; value: number }[]>([])
 
 const rows = ref<EntryRow[]>([])
 const total = ref(0)
@@ -128,10 +130,12 @@ function reload() {
     const payload = listEntries(meta.key, filters.value)
     rows.value = payload.items
     total.value = payload.total
+    stats.value = moduleStats(meta.key)
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '廊桥调度列表读取失败'
   }
 }
 
 onMounted(reload)
+useDataSync(reload)
 </script>

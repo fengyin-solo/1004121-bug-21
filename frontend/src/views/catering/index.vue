@@ -77,15 +77,17 @@ import {
   downloadEntries,
   listEntries,
   moduleMeta,
+  moduleStats,
   runAction as applyAction,
 } from '@/api/local-service'
+import { useDataSync } from '@/composables/useDataSync'
 import type { EntryRow } from '@/data/types'
 
 const meta = moduleMeta('catering')
 const columns = ["配餐编号", "关联航班", "餐食类型", "配餐份数", "特殊需求", "配餐车辆", "送达时间", "配餐状态"]
 const actions = ["开始装配", "确认送达", "签收确认"]
 const statuses = ["待配餐", "装配中", "已送达", "已签收"]
-const stats = [{"label": "待配餐航班", "value": 0}, {"label": "装配中航班", "value": 0}, {"label": "已签收航班", "value": 0}]
+const stats = ref<{ label: string; value: number }[]>([])
 
 const rows = ref<EntryRow[]>([])
 const total = ref(0)
@@ -128,10 +130,12 @@ function reload() {
     const payload = listEntries(meta.key, filters.value)
     rows.value = payload.items
     total.value = payload.total
+    stats.value = moduleStats(meta.key)
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '航食配餐列表读取失败'
   }
 }
 
 onMounted(reload)
+useDataSync(reload)
 </script>

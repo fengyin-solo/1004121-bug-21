@@ -77,15 +77,17 @@ import {
   downloadEntries,
   listEntries,
   moduleMeta,
+  moduleStats,
   runAction as applyAction,
 } from '@/api/local-service'
+import { useDataSync } from '@/composables/useDataSync'
 import type { EntryRow } from '@/data/types'
 
 const meta = moduleMeta('air_emergency')
 const columns = ["应急编号", "事件类型", "涉及航班", "事发位置", "响应等级", "响应人员", "处置措施", "应急状态"]
 const actions = ["启动响应", "落实处置", "解除应急"]
 const statuses = ["待响应", "响应中", "处置中", "已解除"]
-const stats = [{"label": "待响应事件", "value": 0}, {"label": "处置中事件", "value": 0}, {"label": "已解除事件", "value": 0}]
+const stats = ref<{ label: string; value: number }[]>([])
 
 const rows = ref<EntryRow[]>([])
 const total = ref(0)
@@ -128,10 +130,12 @@ function reload() {
     const payload = listEntries(meta.key, filters.value)
     rows.value = payload.items
     total.value = payload.total
+    stats.value = moduleStats(meta.key)
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '应急保障列表读取失败'
   }
 }
 
 onMounted(reload)
+useDataSync(reload)
 </script>

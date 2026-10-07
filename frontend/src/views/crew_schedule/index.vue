@@ -77,15 +77,17 @@ import {
   downloadEntries,
   listEntries,
   moduleMeta,
+  moduleStats,
   runAction as applyAction,
 } from '@/api/local-service'
+import { useDataSync } from '@/composables/useDataSync'
 import type { EntryRow } from '@/data/types'
 
 const meta = moduleMeta('crew_schedule')
 const columns = ["人员编号", "姓名", "岗位类别", "所属班组", "排班日期", "值班时段", "在岗状态", "联络方式"]
 const actions = ["安排排班", "确认在岗", "登记离岗"]
 const statuses = ["待排班", "已排班", "在岗", "已离岗"]
-const stats = [{"label": "在岗人员", "value": 0}, {"label": "待排班人员", "value": 0}, {"label": "今日到岗率", "value": 0}]
+const stats = ref<{ label: string; value: number }[]>([])
 
 const rows = ref<EntryRow[]>([])
 const total = ref(0)
@@ -128,10 +130,12 @@ function reload() {
     const payload = listEntries(meta.key, filters.value)
     rows.value = payload.items
     total.value = payload.total
+    stats.value = moduleStats(meta.key)
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '地勤排班列表读取失败'
   }
 }
 
 onMounted(reload)
+useDataSync(reload)
 </script>

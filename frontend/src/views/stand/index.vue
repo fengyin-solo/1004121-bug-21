@@ -77,15 +77,17 @@ import {
   downloadEntries,
   listEntries,
   moduleMeta,
+  moduleStats,
   runAction as applyAction,
 } from '@/api/local-service'
+import { useDataSync } from '@/composables/useDataSync'
 import type { EntryRow } from '@/data/types'
 
 const meta = moduleMeta('stand')
 const columns = ["机位编号", "机位类型", "所属航站楼", "匹配航班", "计划占用", "实际占用", "分配状态", "备注说明"]
 const actions = ["分配机位", "确认占用", "释放机位"]
 const statuses = ["空闲", "已分配", "占用中", "已释放"]
-const stats = [{"label": "空闲机位", "value": 0}, {"label": "占用中机位", "value": 0}, {"label": "已分配机位", "value": 0}]
+const stats = ref<{ label: string; value: number }[]>([])
 
 const rows = ref<EntryRow[]>([])
 const total = ref(0)
@@ -128,10 +130,12 @@ function reload() {
     const payload = listEntries(meta.key, filters.value)
     rows.value = payload.items
     total.value = payload.total
+    stats.value = moduleStats(meta.key)
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '机位分配列表读取失败'
   }
 }
 
 onMounted(reload)
+useDataSync(reload)
 </script>

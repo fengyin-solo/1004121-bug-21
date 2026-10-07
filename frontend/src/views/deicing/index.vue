@@ -77,15 +77,17 @@ import {
   downloadEntries,
   listEntries,
   moduleMeta,
+  moduleStats,
   runAction as applyAction,
 } from '@/api/local-service'
+import { useDataSync } from '@/composables/useDataSync'
 import type { EntryRow } from '@/data/types'
 
 const meta = moduleMeta('deicing')
 const columns = ["除冰编号", "关联航班", "除冰液类型", "预计用量", "实际用量", "开始时间", "结束时间", "作业状态"]
 const actions = ["开始除冰", "确认完成", "取消作业"]
 const statuses = ["待除冰", "作业中", "已完成", "已取消"]
-const stats = [{"label": "待除冰航班", "value": 0}, {"label": "作业中航班", "value": 0}, {"label": "已完成除冰", "value": 0}]
+const stats = ref<{ label: string; value: number }[]>([])
 
 const rows = ref<EntryRow[]>([])
 const total = ref(0)
@@ -128,10 +130,12 @@ function reload() {
     const payload = listEntries(meta.key, filters.value)
     rows.value = payload.items
     total.value = payload.total
+    stats.value = moduleStats(meta.key)
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '除冰作业列表读取失败'
   }
 }
 
 onMounted(reload)
+useDataSync(reload)
 </script>

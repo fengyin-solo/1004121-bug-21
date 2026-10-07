@@ -77,15 +77,17 @@ import {
   downloadEntries,
   listEntries,
   moduleMeta,
+  moduleStats,
   runAction as applyAction,
 } from '@/api/local-service'
+import { useDataSync } from '@/composables/useDataSync'
 import type { EntryRow } from '@/data/types'
 
 const meta = moduleMeta('turnaround')
 const columns = ["过站编号", "关联航班", "计划到港", "实际到港", "过站时长", "保障进度", "异常事项", "过站状态"]
 const actions = ["开始监测", "正常完成", "标记超时"]
 const statuses = ["待监测", "监测中", "正常完成", "已超时"]
-const stats = [{"label": "监测中航班", "value": 0}, {"label": "正常完成航班", "value": 0}, {"label": "超时航班", "value": 0}]
+const stats = ref<{ label: string; value: number }[]>([])
 
 const rows = ref<EntryRow[]>([])
 const total = ref(0)
@@ -128,10 +130,12 @@ function reload() {
     const payload = listEntries(meta.key, filters.value)
     rows.value = payload.items
     total.value = payload.total
+    stats.value = moduleStats(meta.key)
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '过站监控列表读取失败'
   }
 }
 
 onMounted(reload)
+useDataSync(reload)
 </script>

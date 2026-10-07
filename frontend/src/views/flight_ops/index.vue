@@ -77,15 +77,17 @@ import {
   downloadEntries,
   listEntries,
   moduleMeta,
+  moduleStats,
   runAction as applyAction,
 } from '@/api/local-service'
+import { useDataSync } from '@/composables/useDataSync'
 import type { EntryRow } from '@/data/types'
 
 const meta = moduleMeta('flight_ops')
 const columns = ["航班号", "机尾号", "计划到港", "实际到港", "计划离港", "预计离港", "保障节点", "保障状态"]
 const actions = ["启动保障", "确认就绪", "标记延误"]
 const statuses = ["待保障", "保障中", "已就绪", "已延误"]
-const stats = [{"label": "待保障航班", "value": 0}, {"label": "保障中航班", "value": 0}, {"label": "延误航班", "value": 0}]
+const stats = ref<{ label: string; value: number }[]>([])
 
 const rows = ref<EntryRow[]>([])
 const total = ref(0)
@@ -128,10 +130,12 @@ function reload() {
     const payload = listEntries(meta.key, filters.value)
     rows.value = payload.items
     total.value = payload.total
+    stats.value = moduleStats(meta.key)
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '航班保障列表读取失败'
   }
 }
 
 onMounted(reload)
+useDataSync(reload)
 </script>

@@ -77,15 +77,17 @@ import {
   downloadEntries,
   listEntries,
   moduleMeta,
+  moduleStats,
   runAction as applyAction,
 } from '@/api/local-service'
+import { useDataSync } from '@/composables/useDataSync'
 import type { EntryRow } from '@/data/types'
 
 const meta = moduleMeta('fueling')
 const columns = ["加油编号", "关联航班", "燃油型号", "加油量", "加油车号", "加油开始", "加油结束", "记录状态"]
 const actions = ["开始加油", "完成加油", "复核记录"]
 const statuses = ["待加油", "加油中", "已完成", "已复核"]
-const stats = [{"label": "待加油航班", "value": 0}, {"label": "加油中航班", "value": 0}, {"label": "已完成加油", "value": 0}]
+const stats = ref<{ label: string; value: number }[]>([])
 
 const rows = ref<EntryRow[]>([])
 const total = ref(0)
@@ -128,10 +130,12 @@ function reload() {
     const payload = listEntries(meta.key, filters.value)
     rows.value = payload.items
     total.value = payload.total
+    stats.value = moduleStats(meta.key)
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '航空加油列表读取失败'
   }
 }
 
 onMounted(reload)
+useDataSync(reload)
 </script>

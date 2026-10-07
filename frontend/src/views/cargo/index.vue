@@ -77,15 +77,17 @@ import {
   downloadEntries,
   listEntries,
   moduleMeta,
+  moduleStats,
   runAction as applyAction,
 } from '@/api/local-service'
+import { useDataSync } from '@/composables/useDataSync'
 import type { EntryRow } from '@/data/types'
 
 const meta = moduleMeta('cargo')
 const columns = ["装卸编号", "关联航班", "货物品类", "件数吨位", "装卸班组", "计划开始", "实际完成", "装卸状态"]
 const actions = ["开始装卸", "确认完成", "标记中断"]
 const statuses = ["待装卸", "装卸中", "已完成", "异常中断"]
-const stats = [{"label": "待装卸航班", "value": 0}, {"label": "装卸中航班", "value": 0}, {"label": "异常中断航班", "value": 0}]
+const stats = ref<{ label: string; value: number }[]>([])
 
 const rows = ref<EntryRow[]>([])
 const total = ref(0)
@@ -128,10 +130,12 @@ function reload() {
     const payload = listEntries(meta.key, filters.value)
     rows.value = payload.items
     total.value = payload.total
+    stats.value = moduleStats(meta.key)
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '货物装卸列表读取失败'
   }
 }
 
 onMounted(reload)
+useDataSync(reload)
 </script>

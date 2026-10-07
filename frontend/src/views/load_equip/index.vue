@@ -77,15 +77,17 @@ import {
   downloadEntries,
   listEntries,
   moduleMeta,
+  moduleStats,
   runAction as applyAction,
 } from '@/api/local-service'
+import { useDataSync } from '@/composables/useDataSync'
 import type { EntryRow } from '@/data/types'
 
 const meta = moduleMeta('load_equip')
 const columns = ["设备编号", "设备类型", "适用机型", "最大载重", "安装位置", "购入日期", "维保记录", "设备状态"]
 const actions = ["启用设备", "安排维保", "申请报修"]
 const statuses = ["待机", "运行中", "维保中", "已报修"]
-const stats = [{"label": "运行中设备", "value": 0}, {"label": "维保中设备", "value": 0}, {"label": "报修设备", "value": 0}]
+const stats = ref<{ label: string; value: number }[]>([])
 
 const rows = ref<EntryRow[]>([])
 const total = ref(0)
@@ -128,10 +130,12 @@ function reload() {
     const payload = listEntries(meta.key, filters.value)
     rows.value = payload.items
     total.value = payload.total
+    stats.value = moduleStats(meta.key)
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '装卸设备列表读取失败'
   }
 }
 
 onMounted(reload)
+useDataSync(reload)
 </script>

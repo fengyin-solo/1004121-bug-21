@@ -77,15 +77,17 @@ import {
   downloadEntries,
   listEntries,
   moduleMeta,
+  moduleStats,
   runAction as applyAction,
 } from '@/api/local-service'
+import { useDataSync } from '@/composables/useDataSync'
 import type { EntryRow } from '@/data/types'
 
 const meta = moduleMeta('baggage')
 const columns = ["转运编号", "关联航班", "行李件数", "出发转盘", "到达转盘", "装卸人员", "转运时长", "转运状态"]
 const actions = ["开始卸机", "确认到达", "标记异常"]
 const statuses = ["待卸机", "转运中", "已到达", "异常滞留"]
-const stats = [{"label": "待卸机航班", "value": 0}, {"label": "转运中航班", "value": 0}, {"label": "异常滞留行李", "value": 0}]
+const stats = ref<{ label: string; value: number }[]>([])
 
 const rows = ref<EntryRow[]>([])
 const total = ref(0)
@@ -128,10 +130,12 @@ function reload() {
     const payload = listEntries(meta.key, filters.value)
     rows.value = payload.items
     total.value = payload.total
+    stats.value = moduleStats(meta.key)
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '行李转运列表读取失败'
   }
 }
 
 onMounted(reload)
+useDataSync(reload)
 </script>
