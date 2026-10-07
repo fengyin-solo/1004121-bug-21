@@ -202,6 +202,20 @@ export const MODULES: ModuleMeta[] = [
   },
 ]
 
-export const MODULE_BY_KEY: Map<string, ModuleMeta> = new Map(
-  MODULES.map((item) => [item.key, item]),
-)
+// 缺模块归属的存量记录统一迁移到这个兜底模块：不进导航与路由，只在概览口径里占位。
+export const UNCATEGORIZED_MODULE: ModuleMeta = {
+  key: 'uncategorized',
+  name: '未分类',
+  entity: '未分类记录',
+  desc: '历史数据中无法匹配到已注册业务模块的记录，统一回填到这里。',
+  fields: ['模块归属', '记录编号'],
+  statuses: [],
+  actions: [],
+  actionTargets: {},
+  metrics: [],
+}
+
+export const MODULE_BY_KEY: Map<string, ModuleMeta> = new Map([
+  ...MODULES.map((item) => [item.key, item] as [string, ModuleMeta]),
+  [UNCATEGORIZED_MODULE.key, UNCATEGORIZED_MODULE],
+])

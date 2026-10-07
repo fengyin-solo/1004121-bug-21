@@ -18,6 +18,7 @@
       </article>
     </div>
 
+
     <p class="status-legend">
       <span v-for="item in statusSummary" :key="item.status" class="legend-item">
         {{ item.status }}：{{ item.count }}
@@ -85,10 +86,19 @@ const meta = moduleMeta('flight_ops')
 const columns = ["航班号", "机尾号", "计划到港", "实际到港", "计划离港", "预计离港", "保障节点", "保障状态"]
 const actions = ["启动保障", "确认就绪", "标记延误"]
 const statuses = ["待保障", "保障中", "已就绪", "已延误"]
-const stats = [{"label": "待保障航班", "value": 0}, {"label": "保障中航班", "value": 0}, {"label": "延误航班", "value": 0}]
+// 卡片与运营概览共用同一份落库口径，列表数据变化时这里同步刷新，不再停在昨日值。
+const metricCards = [
+  { label: "待保障航班", match: "待保障" },
+  { label: "保障中航班", match: "保障中" },
+  { label: "延误航班", match: "已延误" },
+]
 
 const rows = ref<EntryRow[]>([])
 const total = ref(0)
+const registered = ref(0)
+const pendingTotal = ref(0)
+const abnormalTotal = ref(0)
+const version = ref(0)
 const errorMessage = ref('')
 const filters = ref<Record<string, string>>({})
 const filterFields = columns.slice(0, 3)
@@ -98,6 +108,16 @@ const statusSummary = computed(() =>
     count: rows.value.filter((row) => String(row.status) === status).length,
   })),
 )
+// 前三张是航班保障自身指标，后三张直接用统一口径里的登记总量/待处理/异常量。
+const stats = computed(() => [
+  ...metricCards.map((card) => ({
+    label: card.label,
+    value: rows.value.filter((row) => String(row.status) === card.match).length,
+  })),
+  { label: '登记总量', value: registered.value },
+  { label: '待处理', value: pendingTotal.value },
+  { label: '异常量', value: abnormalTotal.value },
+])
 
 function resetFilters() {
   filters.value = {}
@@ -105,7 +125,11 @@ function resetFilters() {
 }
 
 function exportRows() {
-  downloadEntries(meta.key)
+  const result = downloadEntries(meta.key)
+  // 导出的登记总量与卡片口径一致时无需额外提示；导出后顺手对齐一次版本。
+  if (result.registered !== registered.value) {
+    reload()
+  }
 }
 
 function openCreate() {
@@ -114,9 +138,11 @@ function openCreate() {
 
 function runAction(action: string, row: EntryRow) {
   errorMessage.value = ''
-  const result = applyAction(meta.key, Number(row.id), action)
+  // 带上列表读取时的版本号：并发只接受最后有效版本，过期则提示刷新而非覆盖。
+  const result = applyAction(meta.key, Number(row.id), action, version.value)
   if (!result.ok) {
     errorMessage.value = result.message
+    reload()
     return
   }
   reload()
@@ -128,6 +154,10 @@ function reload() {
     const payload = listEntries(meta.key, filters.value)
     rows.value = payload.items
     total.value = payload.total
+    registered.value = payload.registered
+    pendingTotal.value = payload.pending
+    abnormalTotal.value = payload.abnormal
+    version.value = payload.version
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '航班保障列表读取失败'
   }
